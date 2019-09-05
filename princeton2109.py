@@ -9,6 +9,8 @@ pip install visu
 
 @author: juliengautier
 modified 2019/08/13 : add position RSAI motors
+modified 2019/09/05 : ROI and binning work but display problem
+
 """
 
 __version__='2019.9'
@@ -73,7 +75,7 @@ class ROPPER(QWidget):
         self.itrig=0
         self.actionButton()
         self.camIsRunnig=False
-        self.setWindowTitle('Princeton CCD FOOTPRINT'+'       v.'+ version)
+        self.setWindowTitle(self.ccdName+'       v.'+ version)
     
     def initCam(self):
         print('init cam')
@@ -121,8 +123,8 @@ class ROPPER(QWidget):
         self.camName=QLabel(self.ccdName,self)
         self.camName.setAlignment(Qt.AlignCenter)
         
-        self.camName.setStyleSheet('font :bold  30pt;color: white')
-        self.camName.setMaximumWidth(60)
+        self.camName.setStyleSheet('font :bold  08pt;color: white')
+        self.camName.setMaximumWidth(120)
         vbox1.addWidget(self.camName)
         
         hbox1=QHBoxLayout() # horizontal layout pour run et stop
@@ -245,6 +247,7 @@ class ROPPER(QWidget):
         self.tempButton.clicked.connect(lambda:self.open_widget(self.tempWidget) )
         self.settingButton.clicked.connect(lambda:self.open_widget(self.settingWidget) )
         self.rotation.editingFinished.connect(self.rotfonct)
+        
     def acquireMultiImage(self):    
         ''' start the acquisition thread
         '''
@@ -265,6 +268,7 @@ class ROPPER(QWidget):
         
     def rotfonct(self):
         self.rot=self.rotation.value()
+        
     def stopAcq(self):
         
         self.mte.StopAcquisition()
@@ -509,30 +513,34 @@ class SETTINGWIDGET(QWidget):
         self.ROIX=QDoubleSpinBox(self)
         self.ROIX.setMinimum(1)
         self.ROIX.setMaximum(self.dimx)
-        
+        self.ROIX.setDecimals(0)
         self.ROIY=QDoubleSpinBox(self)
         self.ROIY.setMinimum(1)
         self.ROIY.setMaximum(self.dimy)
+        self.ROIY.setDecimals(0)
         labelROIY=QLabel('ROI Yo')
         
         labelROIW=QLabel('ROI Width')
         self.ROIW=QDoubleSpinBox(self)
         self.ROIW.setMinimum(1)
         self.ROIW.setMaximum(self.dimx)     
-        
+        self.ROIW.setDecimals(0)
         labelROIH=QLabel('ROI Height')
         self.ROIH=QDoubleSpinBox(self)
         self.ROIH.setMinimum(1)
         self.ROIH.setMaximum(self.dimy) 
+        self.ROIH.setDecimals(0)
         
         labelBinX=QLabel('Bin X')
         self.BINX=QDoubleSpinBox(self)
         self.BINX.setMinimum(1)
         self.BINX.setMaximum(self.dimx) 
+        self.BINX.setDecimals(0)
         labelBinY=QLabel('Bin Y ')
         self.BINY=QDoubleSpinBox(self)
         self.BINY.setMinimum(1)
         self.BINY.setMaximum(self.dimy) 
+        self.BINY.setDecimals(0)
         
         grid_layout = QGridLayout()
         grid_layout.addWidget(labelROIX,0,0)
@@ -579,7 +587,7 @@ class SETTINGWIDGET(QWidget):
         self.wroi=int(sizeRoi.x())
         self.hroi=int(sizeRoi.y())
         self.y0=posRoi.y()+sizeRoi.y()
-        
+        self.y0=int(self.y0)
         self.ROIX.setValue(self.x0)
         self.ROIY.setValue(self.y0)
         self.ROIW.setValue(self.wroi)
@@ -591,10 +599,10 @@ class SETTINGWIDGET(QWidget):
         self.y0=int(self.ROIY.value())
         self.w=int(self.ROIW.value())
         self.h=int(self.ROIH.value())
-        self.BinX=int(self.BINX.value())
+        self.binX=int(self.BINX.value())
         self.binY=int(self.BINY.value())
         
-        self.mte.setROI(self.x0, self.w, self.binX, self.y0, self.h, self.binY, 1)
+        self.mte.setROI(self.x0, self.w, self.binX, self.y0, self.h, self.binY, 0)
         self.mte.sendConfiguration()
         
         if self.roi1Is==True:

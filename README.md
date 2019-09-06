@@ -16,9 +16,13 @@ It can make plot profile and data measurements analysis by using :
     
 ## Installation
 install PICAM for princeton instrument
+
 install visu :
+
 https://github.com/julienGautier77/visu
+
 or 
+
 pip install visu 
 
 ## Usage

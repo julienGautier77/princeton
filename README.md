@@ -1,12 +1,12 @@
 # princeton
 
 princeton camera control is an user interface lto control ropper scientifics camera (PIXIS,MTE)
+
 it use picam library inspired from :
 https://github.com/ddietze/Py-Hardware-Support.git
 
 It can make plot profile and data measurements analysis by using :
-
-    https://github.com/julienGautier77/visu
+https://github.com/julienGautier77/visu
 
 ## Requirements
 *   python 3.x

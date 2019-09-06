@@ -1,5 +1,6 @@
 # princeton
-princeton camera control is an user interface lto control ropper scientifics camera (PIXIX,MTE)
+
+princeton camera control is an user interface lto control ropper scientifics camera (PIXIS,MTE)
 
 
 It can make plot profile and data measurements  analysis
@@ -10,16 +11,17 @@ It can make plot profile and data measurements  analysis
 *   python 3.x
 *   Numpy
 *   PyQt5
-*   pyqtgraph (https://github.com/pyqtgraph/pyqtgraph.git) 
-    * pip intall pyqtgraph
-*   qdarkstyle (https://github.com/ColinDuquesnoy/QDarkStyleSheet.git)
-    * pip install qdarkstyle
-*  sifread.py
-    *   https://github.com/lightingghost/sifreader/tree/master/sifreader
-*  winspec.py 
-    *   https://github.com/antonl/pyWinSpec
+*   visu 21019.9
     
 ## Installation
 install PICAM for princeton instrument
+install visu 
+https://github.com/julienGautier77/visu
+pip install visu 
 
 ## Usage
+appli = QApplication(sys.argv) 
+    appli.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+    e = ROPPER()  
+    e.show()
+    appli.exec_()       

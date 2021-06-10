@@ -1,6 +1,6 @@
 # princeton
 
-princeton camera control is an user interface lto control ropper scientifics camera (PIXIS,MTE)
+princeton camera control is an user interface to control ropper scientifics camera (PIXIS,MTE)
 
 it use picam library inspired from :
 https://github.com/ddietze/Py-Hardware-Support.git
@@ -12,22 +12,21 @@ https://github.com/julienGautier77/visu
 *   python 3.x
 *   Numpy
 *   PyQt5
-*   visu 2019.9
-    
+*   visu 2021.05
+
 ## Installation
 install PICAM for princeton instrument
 
 install visu :
 
-https://github.com/julienGautier77/visu
+pip install git+https://github.com/julienGautier77/visu
 
-or 
 
-pip install visu 
 
 ## Usage
-    appli = QApplication(sys.argv) 
+    appli = QApplication(sys.argv)
+    
     appli.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    e = ROPPER()  
+    e = ROPPER(camID=0,confpath=confpathVisu)  
     e.show()
-    appli.exec_()       
+    appli.exec_()      

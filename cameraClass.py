@@ -3,7 +3,8 @@
 Created on Tue Jan 31 15:34:18 2017
 Need to install PICAM in A 64 windows system
 
-@author:  loa
+@author:LOA inspired by  daniel R. Dietze <daniel.dietze@berkeley.edu>
+
 """
 
 import ctypes,os,time
@@ -53,11 +54,12 @@ class picam():
     # load picam.dll and initialize library
     def loadLibrary(self):
         path_lib = os.path.join('picam_dll','Picam32.dll')
-        print(path_lib)
+        path_lib='C:/Users/Salle-Jaune/Desktop/Python/Princeton/picam_dll/Picam32.dll'
+#        print(path_lib)
         self.lib = ctypes.windll.LoadLibrary(path_lib)
         self.lib.Picam_InitializeLibrary() #modif ju
         
-        print("library loaded")
+        print("Picam library loaded")
 
     # call this function to release any resources and free the library
     def unloadLibrary(self):
@@ -91,12 +93,13 @@ class picam():
         self.camIDs = ptr(pit.PicamCameraID())
         id_count = pit.piint()
         self.lib.Picam_GetAvailableCameraIDs(ptr(self.camIDs), ptr(id_count))
-        print(self.camIDs,id_count)
+#        print('ids',self.camIDs,id_count)
+        print('number of camera connected : ' ,id_count.value)
         modele=[]
         sensorName=[]
         serialNumber=[]
         # if none are found, create a demo camera
-        print("Available Cameras:")
+#        print("Available Cameras:")
         if id_count.value < 1:
             print ('demo')
             self.lib.Picam_DestroyCameraIDs(self.camIDs)
@@ -119,18 +122,18 @@ class picam():
             print('\n')
            # 
         else:
-            print ('mte')
-#            for i in range(id_count.value): # à supprimer si la camera est une MTE
+#            print ('mte')
+            for i in range(id_count.value): # à supprimer si la camera est une MTE
 #                print('  Model is ', pit.PicamModelLookup[self.camIDs[i].model])
-#                modele.append(pit.PicamModelLookup[self.camIDs[i].model])
+                modele.append(pit.PicamModelLookup[self.camIDs[i].model])
 #                print('  Computer interface is ', pit.PicamComputerInterfaceLookup[self.camIDs[i].computer_interface])
 #                print('  Sensor_name is ', self.camIDs[i].sensor_name)
 #                print('  Serial number is', self.camIDs[i].serial_number)
 #                print('\n')
-#                sensorName.append(self.camIDs[i].sensor_name)
-#                serialNumber.append(self.camIDs[i].serial_number)
-#        
-#        return(modele,sensorName,serialNumber)
+                sensorName.append(self.camIDs[i].sensor_name)
+                serialNumber.append(self.camIDs[i].serial_number)
+        
+        return(modele,sensorName,serialNumber)
         
     def connect(self, camID=None):
         """ Connect to camera.
@@ -148,7 +151,12 @@ class picam():
             self.h = self.getParameter("ActiveHeight")
             self.totalFrameSize = self.w * self.h
         else:
-            print('cammm ID',camID)
+            print('connected')
+            print('cam ID :',camID)
+            print('  Model is : ', pit.PicamModelLookup[self.camIDs[camID].model])
+            print('  Sensor_name is : ', (self.camIDs[camID].sensor_name).decode())
+            print('  Serial number is: ', (self.camIDs[camID].serial_number).decode())
+            print('\n')
             self.cam = pit.pivoid()
             self.lib.Picam_OpenCamera(ptr(self.camIDs[camID]), ctypes.addressof(self.cam))
             self.w = self.getParameter("ActiveWidth")
@@ -373,12 +381,13 @@ class picam():
         :param int ybin: Y-Binning, i.e. number of rows that are combined into one larger row (1 to h).
         """
         r = pit.PicamRoi(x0, w, xbin, y0, h, ybin)
-        R = pit.PicamRois(ptr(r), store)   # change 1 to 0 to remove a bug ?!?
+        R = pit.PicamRois(ptr(r), store)   # change 1 to 0 to remove a bug ?!? store the number of region 
         self.setParameter("Rois", R)
         self.totalFrameSize =( (w / xbin) * (h / ybin))
         self.w = (w/xbin) # modif self.w=w
         self.h = (h/ybin)
-
+#        print('ROIs set')
+        
     def Acquisition(self, N=1, timeout=10000):
         print('acquire')
         self.available = pit.PicamAvailableData()
@@ -394,6 +403,7 @@ class picam():
         #(cameraHandel,readoutcount,readouttimeout,outpoutParameter=avaible,outpouterrors)
        # print(self.getParameter("ReadoutCount"))
         print("Durée de l'acquisition : %f s" % (time.time() - t) )
+#        print(errors)
         return t
         
 
@@ -403,7 +413,7 @@ class picam():
         print('start Acquisiotn asynchrone')
         running = pit.pibln()
         self.lib.Picam_IsAcquisitionRunning(self.cam, ptr(running))
-        print(running.value)
+#        print(running.value)
         #if running.value:
          #   print("ERROR: acquisition still running")
           #  return []
@@ -423,8 +433,8 @@ class picam():
     def IsAcquisitionRunning(self):
         running = pit.pibln()
         self.lib.Picam_IsAcquisitionRunning(self.cam, ptr(running))
-        print('isRunning')
-        print(running.value)
+#        print('isRunning')
+#        print(running.value)
         return running.value
     
     def StopAcquisition(self):

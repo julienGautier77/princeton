@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Dec 31 23:14:46 2001
+Install PVCAM from ropper scientifics
+
 on conda prompt 
 
 pip install qdarkstyle (https://github.com/ColinDuquesnoy/QDarkStyleSheet.git)
 pip install pyqtgraph (https://github.com/pyqtgraph/pyqtgraph.git)
-pip install visu
+pip install git+ https:/github.com/.julienGautier77/visu
 
 @author: juliengautier
 modified 2019/08/13 : add position RSAI motors
-modified 2019/09/05 : ROI and binning work but display problem
-
+modified 20021/06/10 add Camera serial number identification
 """
 
-__version__='2019.9'
+__version__='2020.6'
 __author__='julien Gautier'
 version=__version__
 
@@ -35,21 +36,33 @@ try :
 except:
     print('can not control ropper camera: cameraClass or picam_types module is missing')   
 import qdarkstyle
-from visu import SEE
+from visu import SEE2
 
 
 
 class ROPPER(QWidget):
     
     
-    def __init__(self,camID=None):
+    def __init__(self,camID=None,confpath=None,**kwds):
         self.isConnected=False
         super(ROPPER, self).__init__()
         p = pathlib.Path(__file__)
-        self.conf=QtCore.QSettings(str(p.parent / 'confCCD.ini'), QtCore.QSettings.IniFormat)
         sepa=os.sep
+        self.conf=QtCore.QSettings(confpath, QtCore.QSettings.IniFormat)
+        
         self.icon=str(p.parent) + sepa+'icons' +sepa
-      
+        self.configMotorPath="./fichiersConfig/"
+        self.configMotName='configMoteurRSAI.ini'
+        self.confMotorPath=self.configMotorPath+self.configMotName
+        
+        
+        self.confMot=QtCore.QSettings(str(p.parent / self.confMotorPath), QtCore.QSettings.IniFormat)
+        self.confpath=confpath
+        
+        self.kwds=kwds
+        self.kwds["conf"]=self.conf
+        self.kwds["confMot"]=self.confMot
+        
         self.setWindowIcon(QIcon(self.icon+'LOA.png'))
         self.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
         self.iconPlay=pathlib.Path(self.icon+'Play.svg')
@@ -67,22 +80,46 @@ class ROPPER(QWidget):
         if camID==2:
             self.cam="cam1"
         self.camID=int(camID)
+#        print(self.camID)
         self.nbcam=self.cam
         
         self.ccdName=self.conf.value(self.nbcam+"/nameCDD")
+        
+        self.kwds["name"]=self.nbcam
+        
         self.initCam()
         self.setup()
         self.itrig=0
         self.actionButton()
         self.camIsRunnig=False
-        self.setWindowTitle(self.ccdName+'       v.'+ version)
+       
     
     def initCam(self):
-        print('init cam')
+#        print('init cam')
         self.mte = cameraClass.picam()
-        #camProp=self.mte.getAvailableCameras()
-        print('camIDconnected :',self.camID)
-        self.mte.connect(self.camID)
+        camProp=self.mte.getAvailableCameras()
+        print('camera' ,str(self.ccdName))
+        serialAvailable=camProp[2]
+        modelAvailable=camProp[0]
+        
+        self.serial=self.conf.value(self.nbcam+"/serial")
+#        print(len(serialAvailable))
+        if self.serial==serialAvailable[0].decode():
+            self.camID=0
+        if len(serialAvailable)>1:
+            if self.serial==serialAvailable[1].decode():
+                self.camID=1
+        if len(serialAvailable)>2:
+            if self.serial==serialAvailable[2].decode():
+                self.camID=2
+        
+        try :
+            self.mte.connect(self.camID)
+            self.setWindowTitle(str(self.ccdName)+'  '+str(modelAvailable[self.camID])+ '  S/N : '+str(serialAvailable[self.camID].decode())+'       v.'+ version)
+        except :
+            self.mte.connect(0)
+            self.setWindowTitle(str(self.ccdName)+ '  S/N :'+str(serialAvailable[0].decode())+'       v.'+ version)
+        
         self.threadTemp = ThreadTemperature(mte=self.mte)
         self.threadTemp.stopTemp=False
         self.threadTemp.TEMP.connect(self.update_temp)
@@ -99,8 +136,8 @@ class ROPPER(QWidget):
         self.mte.sendConfiguration()
         self.dimx=self.w
         self.dimy=self.h
-        print('adc',self.mte.getParameter("AdcSpeed"))
-        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
+#        print('adc',self.mte.getParameter("AdcSpeed"))
+#        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
         self.mte.SetTemperature(20)
         self.mte.sendConfiguration()
         self.tempWidget=TEMPWIDGET(mte=self.mte)
@@ -123,8 +160,8 @@ class ROPPER(QWidget):
         self.camName=QLabel(self.ccdName,self)
         self.camName.setAlignment(Qt.AlignCenter)
         
-        self.camName.setStyleSheet('font :bold  08pt;color: white')
-        self.camName.setMaximumWidth(120)
+        self.camName.setStyleSheet('font :bold  12pt;color: white')
+        self.camName.setMaximumWidth(80)
         vbox1.addWidget(self.camName)
         
         hbox1=QHBoxLayout() # horizontal layout pour run et stop
@@ -166,13 +203,13 @@ class ROPPER(QWidget):
         vbox1.addWidget(self.labelExp)
         self.hSliderShutter=QSlider(Qt.Horizontal)
         self.hSliderShutter.setMinimum(50)
-        self.hSliderShutter.setMaximum(10000)
+        self.hSliderShutter.setMaximum(100000)
         if self.isConnected==True:
             self.hSliderShutter.setValue(self.sh)
         self.hSliderShutter.setMaximumWidth(80)
         self.shutterBox=QSpinBox()
         self.shutterBox.setMinimum(50)
-        self.shutterBox.setMaximum(10000)
+        self.shutterBox.setMaximum(100000)
 
         if self.isConnected==True:
             self.shutterBox.setValue(self.sh)
@@ -206,8 +243,8 @@ class ROPPER(QWidget):
         hMainLayout=QHBoxLayout()
         hMainLayout.addWidget(cameraWidget)
         
-        
-        self.visualisation=SEE(file=None,path=None,confMot='C:/Users/loa/Desktop/Princeton2019/') ## Widget for visualisation and tools 
+       
+        self.visualisation=SEE2(**self.kwds) ## Widget for visualisation and tools 
         
         vbox2=QVBoxLayout() 
         vbox2.addWidget(self.visualisation)
@@ -247,7 +284,6 @@ class ROPPER(QWidget):
         self.tempButton.clicked.connect(lambda:self.open_widget(self.tempWidget) )
         self.settingButton.clicked.connect(lambda:self.open_widget(self.settingWidget) )
         self.rotation.editingFinished.connect(self.rotfonct)
-        
     def acquireMultiImage(self):    
         ''' start the acquisition thread
         '''
@@ -268,7 +304,6 @@ class ROPPER(QWidget):
         
     def rotfonct(self):
         self.rot=self.rotation.value()
-        
     def stopAcq(self):
         
         self.mte.StopAcquisition()
@@ -280,7 +315,7 @@ class ROPPER(QWidget):
             self.threadAcq.terminate()
         except:
             pass
-        print('acq cam stopped')
+        print('acquisition stopped')
         self.runButton.setEnabled(True)
         self.runButton.setStyleSheet("QPushButton:!pressed{border-image: url(%s);background-color: rgb(0, 0, 0,0) ;border-color: rgb(0, 0, 0,0);}""QPushButton:pressed{image: url(%s);background-color: rgb(0, 0, 0,0) ;border-color: rgb(0, 0, 0)}"%(self.iconPlay,self.iconPlay))
         self.stopButton.setEnabled(False)
@@ -369,6 +404,7 @@ class ThreadRunAcq(QtCore.QThread):
                 try :
                     data = self.mte.GetAcquiredData()
                     data = np.array(data, dtype=np.double)
+                    self.data=np.rot90(data,1)
                     self.newDataRun.emit(data)
                   #  print('acquisition done')
                 except :
@@ -511,36 +547,32 @@ class SETTINGWIDGET(QWidget):
         roiLay= QVBoxLayout()
         labelROIX=QLabel('ROI Xo')
         self.ROIX=QDoubleSpinBox(self)
-        self.ROIX.setMinimum(1)
+        self.ROIX.setMinimum(0)
         self.ROIX.setMaximum(self.dimx)
-        self.ROIX.setDecimals(0)
+        
         self.ROIY=QDoubleSpinBox(self)
         self.ROIY.setMinimum(1)
         self.ROIY.setMaximum(self.dimy)
-        self.ROIY.setDecimals(0)
         labelROIY=QLabel('ROI Yo')
         
         labelROIW=QLabel('ROI Width')
         self.ROIW=QDoubleSpinBox(self)
-        self.ROIW.setMinimum(1)
+        self.ROIW.setMinimum(0)
         self.ROIW.setMaximum(self.dimx)     
-        self.ROIW.setDecimals(0)
+        
         labelROIH=QLabel('ROI Height')
         self.ROIH=QDoubleSpinBox(self)
         self.ROIH.setMinimum(1)
         self.ROIH.setMaximum(self.dimy) 
-        self.ROIH.setDecimals(0)
         
         labelBinX=QLabel('Bin X')
         self.BINX=QDoubleSpinBox(self)
         self.BINX.setMinimum(1)
         self.BINX.setMaximum(self.dimx) 
-        self.BINX.setDecimals(0)
         labelBinY=QLabel('Bin Y ')
         self.BINY=QDoubleSpinBox(self)
         self.BINY.setMinimum(1)
         self.BINY.setMaximum(self.dimy) 
-        self.BINY.setDecimals(0)
         
         grid_layout = QGridLayout()
         grid_layout.addWidget(labelROIX,0,0)
@@ -587,7 +619,7 @@ class SETTINGWIDGET(QWidget):
         self.wroi=int(sizeRoi.x())
         self.hroi=int(sizeRoi.y())
         self.y0=posRoi.y()+sizeRoi.y()
-        self.y0=int(self.y0)
+        
         self.ROIX.setValue(self.x0)
         self.ROIY.setValue(self.y0)
         self.ROIW.setValue(self.wroi)
@@ -599,10 +631,10 @@ class SETTINGWIDGET(QWidget):
         self.y0=int(self.ROIY.value())
         self.w=int(self.ROIW.value())
         self.h=int(self.ROIH.value())
-        self.binX=int(self.BINX.value())
+        self.BinX=int(self.BINX.value())
         self.binY=int(self.BINY.value())
         
-        self.mte.setROI(self.x0, self.w, self.binX, self.y0, self.h, self.binY, 0)
+        self.mte.setROI(self.x0, self.w, self.binX, self.y0, self.h, self.binY, 1)
         self.mte.sendConfiguration()
         
         if self.roi1Is==True:
@@ -666,8 +698,9 @@ class SETTINGWIDGET(QWidget):
         
 if __name__ == "__main__":       
     
-    appli = QApplication(sys.argv) 
+    appli = QApplication(sys.argv)
+    confpathVisu='C:/Users/Salle-Jaune/Desktop/Python/Princeton/confVisuFootPrint.ini'
     appli.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    e = ROPPER()  
+    e = ROPPER(camID=0,confpath=confpathVisu)  
     e.show()
     appli.exec_()       

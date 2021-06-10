@@ -27,6 +27,6 @@ pip install git+https://github.com/julienGautier77/visu
     appli = QApplication(sys.argv)
     
     appli.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    e = ROPPER(camID=0,confpath=confpathVisu)  
+    e = ROPPER()  
     e.show()
     appli.exec_()      

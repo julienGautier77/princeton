@@ -101,49 +101,48 @@ class ROPPER(QWidget):
         print('camera' ,str(self.ccdName))
         serialAvailable=camProp[2]
         modelAvailable=camProp[0]
-        
+        self.isConnected=camProp[3]
         self.serial=self.conf.value(self.nbcam+"/serial")
+        
+        if self.isConnected==True:
+            
 #        print(len(serialAvailable))
-        if self.serial==serialAvailable[0].decode():
-            self.camID=0
-        elif len(serialAvailable)>1:
-            if self.serial==serialAvailable[1].decode():
-                self.camID=1
-        elif len(serialAvailable)>2:
-            if self.serial==serialAvailable[2].decode():
-                self.camID=2
-        else:
-            self.camID=0 #if no serial number in ini file we open the fisrt  camera
+            if self.serial==serialAvailable[0].decode():
+                self.camID=0
+            if len(serialAvailable)>1:
+                if self.serial==serialAvailable[1].decode():
+                    self.camID=1
+            if len(serialAvailable)>2:
+                if self.serial==serialAvailable[2].decode():
+                    self.camID=2
+                try :
+                    self.mte.connect(self.camID)
+                    self.setWindowTitle(str(self.ccdName)+'  '+str(modelAvailable[self.camID])+ '  S/N : '+str(serialAvailable[self.camID].decode())+'       v.'+ version)
+                except :
+                    self.mte.connect(0)
+                    self.setWindowTitle(str(self.ccdName)+ '  S/N :'+str(serialAvailable[0].decode())+'       v.'+ version)
             
+            self.threadTemp = ThreadTemperature(mte=self.mte)
+            self.threadTemp.stopTemp=False
+            self.threadTemp.TEMP.connect(self.update_temp)
+            self.threadTemp.start()
             
-        try :
-            self.mte.connect(self.camID)
-            self.setWindowTitle(str(self.ccdName)+'  '+str(modelAvailable[self.camID])+ '  S/N : '+str(serialAvailable[self.camID].decode())+'       v.'+ version)
-        except :
-            self.mte.connect(0)
-            self.setWindowTitle(str(self.ccdName)+ '  S/N :'+str(serialAvailable[0].decode())+'       v.'+ version)
-        
-        self.threadTemp = ThreadTemperature(mte=self.mte)
-        self.threadTemp.stopTemp=False
-        self.threadTemp.TEMP.connect(self.update_temp)
-        self.threadTemp.start()
-        
-        self.mte.setParameter("CleanCycleCount"     , int(1))
-        self.mte.setParameter("CleanCycleHeight"    , int(1))
-        self.mte.setParameter("ExposureTime"        , int(100))
-        #self.mte.setParameter("TriggerResponse"     , int(1)) # pas de trig
-        self.mte.setParameter("TriggerDetermination", int(1))
-        self.w = self.mte.getParameter("ActiveWidth")
-        self.h = self.mte.getParameter("ActiveHeight")
-        self.mte.setROI(0, self.w, 1, 0, self.h, 1, 0) # full frame
-        self.mte.sendConfiguration()
-        self.dimx=self.w
-        self.dimy=self.h
-#        print('adc',self.mte.getParameter("AdcSpeed"))
-#        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
-        self.mte.SetTemperature(20)
-        self.mte.sendConfiguration()
-        self.tempWidget=TEMPWIDGET(mte=self.mte)
+            self.mte.setParameter("CleanCycleCount"     , int(1))
+            self.mte.setParameter("CleanCycleHeight"    , int(1))
+            self.mte.setParameter("ExposureTime"        , int(100))
+            #self.mte.setParameter("TriggerResponse"     , int(1)) # pas de trig
+            self.mte.setParameter("TriggerDetermination", int(1))
+            self.w = self.mte.getParameter("ActiveWidth")
+            self.h = self.mte.getParameter("ActiveHeight")
+            self.mte.setROI(0, self.w, 1, 0, self.h, 1, 0) # full frame
+            self.mte.sendConfiguration()
+            self.dimx=self.w
+            self.dimy=self.h
+    #        print('adc',self.mte.getParameter("AdcSpeed"))
+    #        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
+            self.mte.SetTemperature(20)
+            self.mte.sendConfiguration()
+            self.tempWidget=TEMPWIDGET(mte=self.mte)
         
         
     def update_temp(self, temp=None):

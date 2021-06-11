@@ -10,8 +10,8 @@ Need to install PICAM in A 64 windows system
 import ctypes,os,time
 import numpy as np
 #from picam_types import *
-
-
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5 import QtCore
 import picam_types as pit
 #import syntax_coloring
 
@@ -102,38 +102,52 @@ class picam():
 #        print("Available Cameras:")
         if id_count.value < 1:
             print ('demo')
+            msg =QMessageBox()
+            msg.setText("Camera not connected")
+            msg.setInformativeText("Please check connexions, or driver certificate" )
+            msg.setWindowTitle("Warning")
+            msg.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+            msg.exec_()
             self.lib.Picam_DestroyCameraIDs(self.camIDs)
-
-            model_array = ptr(pit.piint())
-            model_count = pit.piint()
-            self.lib.Picam_GetAvailableDemoCameraModels(ptr(model_array), ptr(model_count))
-
-            model_ID = pit.PicamCameraID()
-            serial = ctypes.c_char_p(b"Demo Cam 1")
-            self.lib.Picam_ConnectDemoCamera(model_array[67], serial, ptr(model_ID))
-            self.camIDs = [model_ID]
-
-            self.lib.Picam_DestroyModels(model_array)
-
-            print('  Model is ', pit.PicamModelLookup[model_ID.model])
-            print('  Computer interface is ', pit.PicamComputerInterfaceLookup[model_ID.computer_interface])
-            print('  Sensor_name is ', model_ID.sensor_name)
-            print('  Serial number is', model_ID.serial_number)
-            print('\n')
+            connected=False
+#            model_array = ptr(pit.piint())
+#            model_count = pit.piint()
+#            self.lib.Picam_GetAvailableDemoCameraModels(ptr(model_array), ptr(model_count))
+#
+#            model_ID = pit.PicamCameraID()
+#            serial = ctypes.c_char_p(b"Demo Cam 1")
+#            self.lib.Picam_ConnectDemoCamera(model_array[67], serial, ptr(model_ID))
+#            self.camIDs = [model_ID]
+#
+#            self.lib.Picam_DestroyModels(model_array)
+#
+#            print('  Model is ', pit.PicamModelLookup[model_ID.model])
+#            print('  Computer interface is ', pit.PicamComputerInterfaceLookup[model_ID.computer_interface])
+#            print('  Sensor_name is ', model_ID.sensor_name)
+#            print('  Serial number is', model_ID.serial_number)
+#            print('\n')
            # 
         else:
+            connected=True
 #            print ('mte')
             for i in range(id_count.value): # à supprimer si la camera est une MTE
 #                print('  Model is ', pit.PicamModelLookup[self.camIDs[i].model])
-                modele.append(pit.PicamModelLookup[self.camIDs[i].model])
-#                print('  Computer interface is ', pit.PicamComputerInterfaceLookup[self.camIDs[i].computer_interface])
+                try :
+                    modele.append(pit.PicamModelLookup[self.camIDs[i].model])
+                except: 
+                   pass
+#                 print('  Computer interface is ', pit.PicamComputerInterfaceLookup[self.camIDs[i].computer_interface])
 #                print('  Sensor_name is ', self.camIDs[i].sensor_name)
 #                print('  Serial number is', self.camIDs[i].serial_number)
 #                print('\n')
-                sensorName.append(self.camIDs[i].sensor_name)
-                serialNumber.append(self.camIDs[i].serial_number)
+                try :
+                    sensorName.append(self.camIDs[i].sensor_name)
+                except:pass
+                try:
+                    serialNumber.append(self.camIDs[i].serial_number)
+                except:pass
         
-        return(modele,sensorName,serialNumber)
+        return(modele,sensorName,serialNumber,connected)
         
     def connect(self, camID=None):
         """ Connect to camera.
@@ -444,6 +458,7 @@ class picam():
     # it reads all available data at once into a numpy buffer and reformats data to fit to the output mask
     # size is number of readouts to read
     # returns data as floating point
+    
     def GetAcquiredData(self):
         """This is an internally used function to convert the readout buffer into a sequence of numpy arrays.
         It reads all available data at once into a numpy buffer and reformats data to a usable format.

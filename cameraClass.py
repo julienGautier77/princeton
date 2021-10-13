@@ -42,7 +42,7 @@ class picam():
         self.temp_cons = 10
         self.binning = 1
         self.loadLibrary()
-        self.getAvailableCameras()
+#        self.getAvailableCameras()
         #self.connect()
         #self.w = self.getParameter("ActiveWidth")
         #self.h = self.getParameter("ActiveHeight")
@@ -104,7 +104,7 @@ class picam():
             print ('demo')
             msg =QMessageBox()
             msg.setText("Camera not connected")
-            msg.setInformativeText("Please check connexions, or driver certificate" )
+            msg.setInformativeText("Please check connexions, or driver certificate (see  unsigned Driver procedure)" )
             msg.setWindowTitle("Warning")
             msg.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
             msg.exec_()
@@ -136,7 +136,7 @@ class picam():
                     modele.append(pit.PicamModelLookup[self.camIDs[i].model])
                 except: 
                    pass
-#                 print('  Computer interface is ', pit.PicamComputerInterfaceLookup[self.camIDs[i].computer_interface])
+#                print('  Computer interface is ', pit.PicamComputerInterfaceLookup[self.camIDs[i].computer_interface])
 #                print('  Sensor_name is ', self.camIDs[i].sensor_name)
 #                print('  Serial number is', self.camIDs[i].serial_number)
 #                print('\n')
@@ -165,18 +165,18 @@ class picam():
             self.h = self.getParameter("ActiveHeight")
             self.totalFrameSize = self.w * self.h
         else:
-            print('connected')
-            print('cam ID :',camID)
-            print('  Model is : ', pit.PicamModelLookup[self.camIDs[camID].model])
-            print('  Sensor_name is : ', (self.camIDs[camID].sensor_name).decode())
-            print('  Serial number is: ', (self.camIDs[camID].serial_number).decode())
+            print('connected @')
+            print('  Cam ID is :',camID)
+            print('  Model is :', pit.PicamModelLookup[self.camIDs[camID].model])
+            print('  Sensor_name is :', (self.camIDs[camID].sensor_name).decode())
+            print('  Serial number is :', (self.camIDs[camID].serial_number).decode())
             print('\n')
             self.cam = pit.pivoid()
             self.lib.Picam_OpenCamera(ptr(self.camIDs[camID]), ctypes.addressof(self.cam))
             self.w = self.getParameter("ActiveWidth")
             self.h = self.getParameter("ActiveHeight")
             self.totalFrameSize = self.w * self.h
-
+            
     def disconnect(self):
         """Disconnect current camera.
         """
@@ -403,7 +403,7 @@ class picam():
 #        print('ROIs set')
         
     def Acquisition(self, N=1, timeout=10000):
-        print('acquire')
+        print('Acquire')
         self.available = pit.PicamAvailableData()
         errors = pit.piint()
         running = pit.pibln()

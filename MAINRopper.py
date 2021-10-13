@@ -9,15 +9,14 @@ pip install visu
 
 @author: juliengautier
 modified 2019/08/13 : add position RSAI motors
-modified 2021/06/16 : add opining by serial number
 """
 
-__version__='2021.6'
+__version__='2019.9'
 __author__='julien Gautier'
 version=__version__
 
-from PyQt5.QtWidgets import QApplication,QVBoxLayout,QHBoxLayout,QWidget,QPushButton
-from PyQt5.QtWidgets import QComboBox,QSlider,QLabel,QSpinBox,QDoubleSpinBox,QGridLayout
+from PyQt5.QtWidgets import QApplication,QVBoxLayout,QSizePolicy,QHBoxLayout,QWidget,QPushButton
+from PyQt5.QtWidgets import QComboBox,QSlider,QLabel,QSpinBox,QGroupBox,QDoubleSpinBox,QGridLayout,QDockWidget
 from pyqtgraph.Qt import QtCore
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
@@ -26,38 +25,30 @@ import numpy as np
 import pathlib,os
 import pyqtgraph as pg 
 
+#
+#except:
+#    print ('No visu module installed : pip install visu' )
 try :
     import cameraClass # biblio camera ropper 
 except:
     print('can not control ropper camera: cameraClass or picam_types module is missing')   
-    # pb load dll  install pvcam or copy paste all the folder dll 
 import qdarkstyle
 from visu import SEE2
-
+import picam_types as pit
 
 
 class ROPPER(QWidget):
     
     
-    def __init__(self,cam=None,confpath=None,**kwds):
+    def __init__(self,camID=None,confpath=None):
         self.isConnected=False
         super(ROPPER, self).__init__()
         p = pathlib.Path(__file__)
+        self.conf=QtCore.QSettings(str(p.parent / 'confCCD.ini'), QtCore.QSettings.IniFormat)
         sepa=os.sep
-        self.conf=QtCore.QSettings(confpath, QtCore.QSettings.IniFormat)
-        
         self.icon=str(p.parent) + sepa+'icons' +sepa
-        self.configMotorPath="./fichiersConfig/"
-        self.configMotName='configMoteurRSAI.ini'
-        self.confMotorPath=self.configMotorPath+self.configMotName
-        self.confMot=QtCore.QSettings(str(p.parent / self.confMotorPath), QtCore.QSettings.IniFormat)
+        
         self.confpath=confpath
-        
-        
-        self.kwds=kwds
-        self.kwds["conf"]=self.conf
-        self.kwds["confMot"]=self.confMot
-        
         self.setWindowIcon(QIcon(self.icon+'LOA.png'))
         self.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
         self.iconPlay=pathlib.Path(self.icon+'Play.svg')
@@ -66,92 +57,55 @@ class ROPPER(QWidget):
         self.iconStop=pathlib.PurePosixPath(self.iconStop)
         self.rot=0
         
-#        if camID==None: # si None on prend la première...
-#            camID=0
-#        if camID==0:
-#            self.cam="cam0"
-#        if camID==1:
-#            self.cam="cam1"
-#        if camID==2:
-#            self.cam="cam1"
-#        self.camID=int(camID)
+        if camID==None: # si None on prend la première...
+            camID=0
+        if camID==0:
+            self.cam="cam0"
+        if camID==1:
+            self.cam="cam1"
+        if camID==2:
+            self.cam="cam1"
+        self.camID=int(camID)
 #        print(self.camID)
-        
-        self.cam=cam
-        if self.cam==None:
-            self.cam="camDefault"
-            
         self.nbcam=self.cam
         
         self.ccdName=self.conf.value(self.nbcam+"/nameCDD")
-        
-        self.kwds["name"]=self.nbcam
         
         self.initCam()
         self.setup()
         self.itrig=0
         self.actionButton()
         self.camIsRunnig=False
-       
+        self.setWindowTitle('Princeton CCD ' +str(self.ccdName)+'       v.'+ version)
     
     def initCam(self):
 #        print('init cam')
         self.mte = cameraClass.picam()
-        camProp=self.mte.getAvailableCameras()
-        print('Camera name is : ' ,str(self.ccdName))
-        serialAvailable=camProp[2]
-        modelAvailable=camProp[0]
-        
-        self.serial=self.conf.value(self.nbcam+"/serial")
-#        print(len(serialAvailable))
-        if self.serial==serialAvailable[0].decode():
-            self.camID=0
-        if len(serialAvailable)>1:
-            if self.serial==serialAvailable[1].decode():
-                self.camID=1
-        if len(serialAvailable)>2:
-            if self.serial==serialAvailable[2].decode():
-                self.camID=2
-        
-        try :
-            self.mte.connect(self.camID)
-            self.setWindowTitle(str(self.ccdName)+'  '+str(modelAvailable[self.camID])+ '  S/N : '+str(serialAvailable[self.camID].decode())+'       v.'+ version)
-            self.isConnected=True
-        except :
-            try:
-                self.mte.connect(0)
-                self.setWindowTitle(str(self.ccdName)+ '  S/N :'+str(serialAvailable[0].decode())+'       v.'+ version)
-                self.camID=0
-                self.isConnected=True
-            except:
-                self.isConnected=False
-        
-        if self.isConnected==True: 
-            self.sh=int(self.conf.value(self.nbcam+"/shutter")   )
-            
-            self.threadTemp = ThreadTemperature(mte=self.mte)
-            self.threadTemp.stopTemp=False
-            self.threadTemp.TEMP.connect(self.update_temp)
-            self.threadTemp.start()
-            
-            self.mte.setParameter("CleanCycleCount"     , int(1))
-            self.mte.setParameter("CleanCycleHeight"    , int(1))
-            self.mte.setParameter("ExposureTime"        , int(100))
-            #self.mte.setParameter("TriggerResponse"     , int(1)) # pas de trig
-            self.mte.setParameter("TriggerDetermination", int(1))
-            self.w = self.mte.getParameter("ActiveWidth")
-            self.h = self.mte.getParameter("ActiveHeight")
-            self.mte.setROI(0, self.w, 1, 0, self.h, 1, 0) # full frame
-            self.mte.setParameter("ExposureTime", int(self.sh))
-            self.mte.sendConfiguration()
-            self.dimx=self.w
-            self.dimy=self.h
-    #        print('adc',self.mte.getParameter("AdcSpeed"))
-    #        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
-            self.mte.SetTemperature(20)
-            self.mte.sendConfiguration()
-            self.tempWidget=TEMPWIDGET(mte=self.mte)
-        
+        #camProp=self.mte.getAvailableCameras()
+        print('camIDconnected :',self.camID)
+        self.mte.connect(self.camID)
+        self.threadTemp = ThreadTemperature(mte=self.mte)
+        self.threadTemp.stopTemp=False
+        self.threadTemp.TEMP.connect(self.update_temp)
+        self.threadTemp.start()
+        self.mte.SetAdcConf( gain="High", speed=1.0)
+        self.mte.setParameter("CleanCycleCount"     , int(1))
+        self.mte.setParameter("CleanCycleHeight"    , int(1))
+        self.mte.setParameter("ExposureTime"        , int(100))
+        #self.mte.setParameter("TriggerResponse"     , int(1)) # pas de trig
+        self.mte.setParameter("TriggerDetermination", int(1))
+        self.w = self.mte.getParameter("ActiveWidth")
+        self.h = self.mte.getParameter("ActiveHeight")
+        self.mte.setROI(0, self.w, 1, 0, self.h, 1, 0) # full frame
+        self.mte.sendConfiguration()
+        self.dimx=self.w
+        self.dimy=self.h
+#        print('adc',self.mte.getParameter("AdcSpeed"))
+#        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
+        self.mte.SetTemperature(20)
+        self.mte.sendConfiguration()
+        self.tempWidget=TEMPWIDGET(mte=self.mte)
+        print('analog Gain',self.mte.getParameter("AdcAnalogGain"))
         
     def update_temp(self, temp=None):
         if temp == None:
@@ -213,13 +167,13 @@ class ROPPER(QWidget):
         vbox1.addWidget(self.labelExp)
         self.hSliderShutter=QSlider(Qt.Horizontal)
         self.hSliderShutter.setMinimum(50)
-        self.hSliderShutter.setMaximum(100000)
+        self.hSliderShutter.setMaximum(10000)
         if self.isConnected==True:
             self.hSliderShutter.setValue(self.sh)
         self.hSliderShutter.setMaximumWidth(80)
         self.shutterBox=QSpinBox()
         self.shutterBox.setMinimum(50)
-        self.shutterBox.setMaximum(100000)
+        self.shutterBox.setMaximum(10000)
 
         if self.isConnected==True:
             self.shutterBox.setValue(self.sh)
@@ -253,14 +207,14 @@ class ROPPER(QWidget):
         hMainLayout=QHBoxLayout()
         hMainLayout.addWidget(cameraWidget)
         
-       
-        self.visualisation=SEE2(**self.kwds) ## Widget for visualisation and tools 
+        
+        self.visualisation=SEE2(file=None,path=None,confpath=self.confpath,confMot='C:/Users/loa/Desktop/Princeton2019/') ## Widget for visualisation and tools 
         
         vbox2=QVBoxLayout() 
         vbox2.addWidget(self.visualisation)
         hMainLayout.addLayout(vbox2)
-        if self.isConnected==True:
-            self.settingWidget=SETTINGWIDGET(mte=self.mte,visualisation=self.visualisation)
+        
+        self.settingWidget=SETTINGWIDGET(mte=self.mte,visualisation=self.visualisation)
         
         self.setLayout(hMainLayout)
     
@@ -294,6 +248,7 @@ class ROPPER(QWidget):
         self.tempButton.clicked.connect(lambda:self.open_widget(self.tempWidget) )
         self.settingButton.clicked.connect(lambda:self.open_widget(self.settingWidget) )
         self.rotation.editingFinished.connect(self.rotfonct)
+        
     def acquireMultiImage(self):    
         ''' start the acquisition thread
         '''
@@ -325,7 +280,7 @@ class ROPPER(QWidget):
             self.threadAcq.terminate()
         except:
             pass
-        print('acquisition stopped')
+        print('acq cam stopped')
         self.runButton.setEnabled(True)
         self.runButton.setStyleSheet("QPushButton:!pressed{border-image: url(%s);background-color: rgb(0, 0, 0,0) ;border-color: rgb(0, 0, 0,0);}""QPushButton:pressed{image: url(%s);background-color: rgb(0, 0, 0,0) ;border-color: rgb(0, 0, 0)}"%(self.iconPlay,self.iconPlay))
         self.stopButton.setEnabled(False)
@@ -354,6 +309,7 @@ class ROPPER(QWidget):
         '''
         
         self.data=np.rot90(data,self.rot)
+        print(self.rot)
         self.visualisation.newDataReceived(self.data) # send data to visualisation widget
     
     
@@ -385,9 +341,9 @@ class ROPPER(QWidget):
         self.mte.disconnect()
         self.mte.unloadLibrary()
         time.sleep(0.2)      
-        if self.isConnected==True:
-            if self.settingWidget.isWinOpen==True:
-                self.settingWidget.close()
+
+        if self.settingWidget.isWinOpen==True:
+            self.settingWidget.close()
 
 
 class ThreadRunAcq(QtCore.QThread):
@@ -414,7 +370,7 @@ class ThreadRunAcq(QtCore.QThread):
                 try :
                     data = self.mte.GetAcquiredData()
                     data = np.array(data, dtype=np.double)
-                    self.data=np.rot90(data,1)
+                    self.data=np.rot90(self.data,1)
                     self.newDataRun.emit(data)
                   #  print('acquisition done')
                 except :
@@ -561,13 +517,13 @@ class SETTINGWIDGET(QWidget):
         self.ROIX.setMaximum(self.dimx)
         
         self.ROIY=QDoubleSpinBox(self)
-        self.ROIY.setMinimum(1)
+        self.ROIY.setMinimum(0)
         self.ROIY.setMaximum(self.dimy)
         labelROIY=QLabel('ROI Yo')
         
         labelROIW=QLabel('ROI Width')
         self.ROIW=QDoubleSpinBox(self)
-        self.ROIW.setMinimum(0)
+        self.ROIW.setMinimum(1)
         self.ROIW.setMaximum(self.dimx)     
         
         labelROIH=QLabel('ROI Height')
@@ -641,10 +597,10 @@ class SETTINGWIDGET(QWidget):
         self.y0=int(self.ROIY.value())
         self.w=int(self.ROIW.value())
         self.h=int(self.ROIH.value())
-        self.BinX=int(self.BINX.value())
+        self.binX=int(self.BINX.value())
         self.binY=int(self.BINY.value())
         
-        self.mte.setROI(self.x0, self.w, self.binX, self.y0, self.h, self.binY, 1)
+        self.mte.setROI(self.x0, self.w, self.binX, self.y0, self.h, self.binY, 0)
         self.mte.sendConfiguration()
         
         if self.roi1Is==True:
@@ -705,12 +661,92 @@ class SETTINGWIDGET(QWidget):
         time.sleep(0.1)
         
         event.accept() 
+
+class App2Cam(QWidget):
+    #class 4 camera
+    def __init__(self,camName0=None,camName1=None):
+        super().__init__()
+        self.left=100
+        self.top=30
+        self.width=1000
+        self.height=1500
+        self.setGeometry(self.left,self.top,self.width,self.height)
+        self.setWindowTitle('Princeton 2 cameras' )
+       
+        self.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+        p = pathlib.Path(__file__)
+        sepa=os.sep
+        self.icon=str(p.parent) + sepa + 'icons' +sepa
+        self.setWindowIcon(QIcon(self.icon+'LOA.png'))
+        confpathVisu='C:/Users/Salle-Jaune/Desktop/Python/Princeton/confVisuFootPrint.ini'
+        confpathVisuDuree='C:/Users/Salle-Jaune/Desktop/Python/Princeton/confVisuDuree.ini'
+   
+
+        self.cam0 =ROPPER(camID=1,confpath=confpathVisu)    
+        self.cam1 =ROPPER(camID=0,confpath=confpathVisuDuree)
+        
+        self.cam=[self.cam0,self.cam1]
+        self.setup()
+        self.setContentsMargins(1,1,1,1)
+        self.actionButton()
+        
+    def setup(self):
+
+        grid_layout = QGridLayout()
+        grid_layout.setVerticalSpacing(1)
+        grid_layout.setHorizontalSpacing(1)
+        
+        
+        self.dock0=QDockWidget(self)
+        self.dock0.setWindowTitle(self.cam0.ccdName)
+        self.dock0.setWidget(self.cam0)
+        self.dock0.setFeatures(QDockWidget.DockWidgetFloatable)
+#        self.dock0.setWindowState(Qt::WindowFullScreen)
+        
+        self.dock1=QDockWidget(self)
+        self.dock1.setWindowTitle(self.cam1.ccdName)
+        self.dock1.setWidget(self.cam1)
+        self.dock1.setFeatures(QDockWidget.DockWidgetFloatable)
+        
+               
+        
+        grid_layout.addWidget(self.dock0, 0, 0)
+        grid_layout.addWidget(self.dock1, 0, 1)
+        
+        
+        grid_layout.setContentsMargins(1,1,1,1)
+        self.horizontalGroupBox=QGroupBox()
+        self.horizontalGroupBox.setLayout(grid_layout)
+        self.horizontalGroupBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        windowLayout=QVBoxLayout()
+        windowLayout.addWidget(self.horizontalGroupBox)
+        windowLayout.setContentsMargins(1,1,1,1)
+        self.setLayout(windowLayout)
+
+
+    def actionButton(self):
+        self.dock0.topLevelChanged.connect(self.Dock0Changed)
+        self.dock1.topLevelChanged.connect(self.Dock1Changed)
+        
+    def Dock0Changed(self):
+        self.dock0.showMaximized()
+    def Dock1Changed(self):
+        self.dock1.showMaximized()
+    
+    
+        
+
+    def closeEvent(self,event):
+        exit
+        event.accept()
+
         
 if __name__ == "__main__":       
     
     appli = QApplication(sys.argv)
-    confpathVisu='C:/Users/Salle-Jaune/Desktop/Python/Princeton/confCCD.ini'
     appli.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    e = ROPPER(cam='cam0',confpath=confpathVisu)  
+    e=App2Cam()
     e.show()
+    
     appli.exec_()       

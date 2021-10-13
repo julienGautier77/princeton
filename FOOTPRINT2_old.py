@@ -9,10 +9,9 @@ pip install visu
 
 @author: juliengautier
 modified 2019/08/13 : add position RSAI motors
-modified 2021/06/16 : add opining by serial number
 """
 
-__version__='2021.6'
+__version__='2020.6'
 __author__='julien Gautier'
 version=__version__
 
@@ -26,11 +25,13 @@ import numpy as np
 import pathlib,os
 import pyqtgraph as pg 
 
+#
+#except:
+#    print ('No visu module installed : pip install visu' )
 try :
     import cameraClass # biblio camera ropper 
 except:
     print('can not control ropper camera: cameraClass or picam_types module is missing')   
-    # pb load dll  install pvcam or copy paste all the folder dll 
 import qdarkstyle
 from visu import SEE2
 
@@ -50,9 +51,10 @@ class ROPPER(QWidget):
         self.configMotorPath="./fichiersConfig/"
         self.configMotName='configMoteurRSAI.ini'
         self.confMotorPath=self.configMotorPath+self.configMotName
+        
+        
         self.confMot=QtCore.QSettings(str(p.parent / self.confMotorPath), QtCore.QSettings.IniFormat)
         self.confpath=confpath
-        
         
         self.kwds=kwds
         self.kwds["conf"]=self.conf
@@ -76,11 +78,9 @@ class ROPPER(QWidget):
 #            self.cam="cam1"
 #        self.camID=int(camID)
 #        print(self.camID)
-        
         self.cam=cam
         if self.cam==None:
             self.cam="camDefault"
-            
         self.nbcam=self.cam
         
         self.ccdName=self.conf.value(self.nbcam+"/nameCDD")
@@ -98,7 +98,7 @@ class ROPPER(QWidget):
 #        print('init cam')
         self.mte = cameraClass.picam()
         camProp=self.mte.getAvailableCameras()
-        print('Camera name is : ' ,str(self.ccdName))
+        print('camera' ,str(self.ccdName))
         serialAvailable=camProp[2]
         modelAvailable=camProp[0]
         
@@ -116,41 +116,32 @@ class ROPPER(QWidget):
         try :
             self.mte.connect(self.camID)
             self.setWindowTitle(str(self.ccdName)+'  '+str(modelAvailable[self.camID])+ '  S/N : '+str(serialAvailable[self.camID].decode())+'       v.'+ version)
-            self.isConnected=True
         except :
-            try:
-                self.mte.connect(0)
-                self.setWindowTitle(str(self.ccdName)+ '  S/N :'+str(serialAvailable[0].decode())+'       v.'+ version)
-                self.camID=0
-                self.isConnected=True
-            except:
-                self.isConnected=False
+            self.mte.connect(0)
+            self.setWindowTitle(str(self.ccdName)+ '  S/N :'+str(serialAvailable[0].decode())+'       v.'+ version)
+            self.camID=0
+            
+        self.threadTemp = ThreadTemperature(mte=self.mte)
+        self.threadTemp.stopTemp=False
+        self.threadTemp.TEMP.connect(self.update_temp)
+        self.threadTemp.start()
         
-        if self.isConnected==True: 
-            self.sh=int(self.conf.value(self.nbcam+"/shutter")   )
-            
-            self.threadTemp = ThreadTemperature(mte=self.mte)
-            self.threadTemp.stopTemp=False
-            self.threadTemp.TEMP.connect(self.update_temp)
-            self.threadTemp.start()
-            
-            self.mte.setParameter("CleanCycleCount"     , int(1))
-            self.mte.setParameter("CleanCycleHeight"    , int(1))
-            self.mte.setParameter("ExposureTime"        , int(100))
-            #self.mte.setParameter("TriggerResponse"     , int(1)) # pas de trig
-            self.mte.setParameter("TriggerDetermination", int(1))
-            self.w = self.mte.getParameter("ActiveWidth")
-            self.h = self.mte.getParameter("ActiveHeight")
-            self.mte.setROI(0, self.w, 1, 0, self.h, 1, 0) # full frame
-            self.mte.setParameter("ExposureTime", int(self.sh))
-            self.mte.sendConfiguration()
-            self.dimx=self.w
-            self.dimy=self.h
-    #        print('adc',self.mte.getParameter("AdcSpeed"))
-    #        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
-            self.mte.SetTemperature(20)
-            self.mte.sendConfiguration()
-            self.tempWidget=TEMPWIDGET(mte=self.mte)
+        self.mte.setParameter("CleanCycleCount"     , int(1))
+        self.mte.setParameter("CleanCycleHeight"    , int(1))
+        self.mte.setParameter("ExposureTime"        , int(100))
+        #self.mte.setParameter("TriggerResponse"     , int(1)) # pas de trig
+        self.mte.setParameter("TriggerDetermination", int(1))
+        self.w = self.mte.getParameter("ActiveWidth")
+        self.h = self.mte.getParameter("ActiveHeight")
+        self.mte.setROI(0, self.w, 1, 0, self.h, 1, 0) # full frame
+        self.mte.sendConfiguration()
+        self.dimx=self.w
+        self.dimy=self.h
+#        print('adc',self.mte.getParameter("AdcSpeed"))
+#        print('ShutterTimingMode',self.mte.getParameter("ShutterTimingMode"))
+        self.mte.SetTemperature(20)
+        self.mte.sendConfiguration()
+        self.tempWidget=TEMPWIDGET(mte=self.mte)
         
         
     def update_temp(self, temp=None):
@@ -259,8 +250,8 @@ class ROPPER(QWidget):
         vbox2=QVBoxLayout() 
         vbox2.addWidget(self.visualisation)
         hMainLayout.addLayout(vbox2)
-        if self.isConnected==True:
-            self.settingWidget=SETTINGWIDGET(mte=self.mte,visualisation=self.visualisation)
+        
+        self.settingWidget=SETTINGWIDGET(mte=self.mte,visualisation=self.visualisation)
         
         self.setLayout(hMainLayout)
     
@@ -385,9 +376,9 @@ class ROPPER(QWidget):
         self.mte.disconnect()
         self.mte.unloadLibrary()
         time.sleep(0.2)      
-        if self.isConnected==True:
-            if self.settingWidget.isWinOpen==True:
-                self.settingWidget.close()
+
+        if self.settingWidget.isWinOpen==True:
+            self.settingWidget.close()
 
 
 class ThreadRunAcq(QtCore.QThread):
@@ -711,6 +702,6 @@ if __name__ == "__main__":
     appli = QApplication(sys.argv)
     confpathVisu='C:/Users/Salle-Jaune/Desktop/Python/Princeton/confCCD.ini'
     appli.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    e = ROPPER(cam='cam0',confpath=confpathVisu)  
+    e = ROPPER(cam=None,confpath=confpathVisu)  
     e.show()
     appli.exec_()       

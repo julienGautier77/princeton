@@ -154,6 +154,7 @@ class picam():
 
         :param int camID: Number / index of camera to connect to (optional). It is an integer index into a list of valid camera IDs that has been retrieved by :py:func:`getAvailableCameras`. If camID is None, this functions connects to the first available camera (default).
         """
+        print('camid la',camID)
         if self.cam is not None:
             self.disconnect()
         if camID is None:
@@ -167,16 +168,19 @@ class picam():
         else:
             print('connected @')
             print('  Cam ID is :',camID)
-            print('  Model is :', pit.PicamModelLookup[self.camIDs[camID].model])
-            print('  Sensor_name is :', (self.camIDs[camID].sensor_name).decode())
-            print('  Serial number is :', (self.camIDs[camID].serial_number).decode())
-            print('\n')
+#            print('  Model is :', pit.PicamModelLookup[self.camIDs[camID].model])
+#            print('  Sensor_name is :', (self.camIDs[camID].sensor_name).decode())
+#            print('  Serial number is :', (self.camIDs[camID].serial_number).decode())
+#            print('\n')
             self.cam = pit.pivoid()
+            print('ooo',self.cam)
             self.lib.Picam_OpenCamera(ptr(self.camIDs[camID]), ctypes.addressof(self.cam))
+            
             self.w = self.getParameter("ActiveWidth")
+            print('oddd')
             self.h = self.getParameter("ActiveHeight")
             self.totalFrameSize = self.w * self.h
-            
+            print('oddd',self.totalFrameSize)
     def disconnect(self):
         """Disconnect current camera.
         """

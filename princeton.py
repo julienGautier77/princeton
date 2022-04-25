@@ -98,12 +98,13 @@ class ROPPER(QWidget):
 #        print('init cam')
         self.mte = cameraClass.picam()
         camProp=self.mte.getAvailableCameras()
+        print(camProp)
         print('Camera name is : ' ,str(self.ccdName))
         serialAvailable=camProp[2]
         modelAvailable=camProp[0]
         
         self.serial=self.conf.value(self.nbcam+"/serial")
-#        print(len(serialAvailable))
+        print(serialAvailable)
         if self.serial==serialAvailable[0].decode():
             self.camID=0
         if len(serialAvailable)>1:
@@ -114,12 +115,16 @@ class ROPPER(QWidget):
                 self.camID=2
         
         try :
+            print('la99')
             self.mte.connect(self.camID)
+            print('lsa')
             self.setWindowTitle(str(self.ccdName)+'  '+str(modelAvailable[self.camID])+ '  S/N : '+str(serialAvailable[self.camID].decode())+'       v.'+ version)
             self.isConnected=True
+            
         except :
             try:
                 self.mte.connect(0)
+                
                 self.setWindowTitle(str(self.ccdName)+ '  S/N :'+str(serialAvailable[0].decode())+'       v.'+ version)
                 self.camID=0
                 self.isConnected=True
@@ -711,6 +716,6 @@ if __name__ == "__main__":
     appli = QApplication(sys.argv)
     confpathVisu='C:/Users/Salle-Jaune/Desktop/Python/Princeton/confCCD.ini'
     appli.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    e = ROPPER(cam='cam0',confpath=confpathVisu)  
+    e = ROPPER(cam='cam3',confpath=confpathVisu)  
     e.show()
     appli.exec_()       

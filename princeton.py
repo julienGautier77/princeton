@@ -32,12 +32,12 @@ except:
     print('can not control ropper camera: cameraClass or picam_types module is missing')   
     # pb load dll  install pvcam or copy paste all the folder dll 
 import qdarkstyle
-from visu import SEE2
+from visu import SEE
 
 
 
 class ROPPER(QWidget):
-    
+    signalData=QtCore.pyqtSignal(object)
     
     def __init__(self,cam=None,confpath=None,**kwds):
         self.isConnected=False
@@ -259,7 +259,7 @@ class ROPPER(QWidget):
         hMainLayout.addWidget(cameraWidget)
         
        
-        self.visualisation=SEE2(**self.kwds) ## Widget for visualisation and tools 
+        self.visualisation=SEE2(parent=self,**self.kwds) ## Widget for visualisation and tools 
         
         vbox2=QVBoxLayout() 
         vbox2.addWidget(self.visualisation)
@@ -359,8 +359,8 @@ class ROPPER(QWidget):
         '''
         
         self.data=np.rot90(data,self.rot)
-        self.visualisation.newDataReceived(self.data) # send data to visualisation widget
-    
+        #self.visualisation.newDataReceived(self.data) # send data to visualisation widget
+        self.signalData.emit(self.data)
     
     
     def open_widget(self,fene):
